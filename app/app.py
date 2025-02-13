@@ -13,30 +13,11 @@ so that users don’t have to manually run a separate tool.
 
 import os
 import subprocess
-
-def is_windows_host():
-    """Detects if the container is running on a Windows host or WSL."""
-    try:
-        output = subprocess.check_output("grep -qEi '(microsoft|wsl)' /proc/version && echo 'WSL' || echo 'Linux'", shell=True).decode().strip()
-        return output == "WSL" or sys.platform == "win32"  # Also check sys.platform for native Windows
-    except Exception:
-        return False  # Assume Linux if detection fails
-    
-# Set the environment variable if running on Windows or WSL (same as --no-mmap).
-# On Windows or WSL, the mmap module seems to have limitations when mapping files larger than 1 GB.
-# if is_windows_host():
-#     os.environ['LLAMA_ARG_NO_MMAP'] = '1'
-#     print("[INFO] Windows or WSL detected, setting LLAMA_ARG_NO_MMAP environment variable.")
-
+import time
+import sys
 import random
-import sys  # For sys.executable cross-platform calls
-
-# Use expandable segments to help reduce fragmentation issues.
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
 import json
 import yaml
-import subprocess
 import gradio as gr
 import shutil
 import threading
@@ -406,6 +387,42 @@ def format_quant_type(qtype: str) -> str:
     else:
         return qtype.upper()
 
+# ---------------------------
+# New Helper: Upload with Retry (no backup copy)
+# ---------------------------
+def upload_quant_retry(model_id, base_model_name, quantization_type, save_folder, hf_token, username, max_retries=3, **kwargs):
+    """
+    Retry the upload process for the quantized model.
+    If the upload succeeds, create a marker file "upload_success.txt" in the folder.
+    Yields log messages.
+    """
+    repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
+    success = False
+    for attempt in range(1, max_retries+1):
+        yield f"[INFO] Upload attempt {attempt} for repository {repo_id}\n"
+        log = upload_quant(model_id, base_model_name, quantization_type, save_folder, hf_token, username, **kwargs)
+        yield log
+        if "[ERROR]" not in log:
+            success = True
+            yield f"[INFO] Upload succeeded on attempt {attempt}.\n"
+            # Create a marker file to indicate successful upload.
+            marker_path = os.path.join(save_folder, "upload_success.txt")
+            try:
+                with open(marker_path, "w") as f:
+                    f.write("Upload succeeded.\n")
+                yield f"[INFO] Created marker file {marker_path}.\n"
+            except Exception as e:
+                yield f"[WARN] Failed to create marker file: {e}\n"
+            break
+        else:
+            if attempt < max_retries:
+                yield "[WARN] Upload failed. Retrying after 5 seconds...\n"
+                time.sleep(5)
+            else:
+                yield "[ERROR] Maximum upload attempts reached. Upload failed.\n"
+    # Note: The caller should check for the marker file to decide cleanup.
+    return
+
 def upload_quant(model_id, base_model_name, quantization_type, save_folder, hf_token, username, **kwargs):
     repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
     log = f"[INFO] Preparing to upload quantized model to repo: {repo_id}\n"
@@ -462,7 +479,6 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
     yield f"=== GGUF Quantization for {base_model_name} ===\n"
     yield f"[INFO] Expected output file: {out_file}\n"
     
-    # Always compute the imatrix file path if imatrix is enabled.
     if use_imatrix:
         imatrix_file = os.path.join(save_folder, f"{base_model_name}.imatrix.dat")
     
@@ -475,7 +491,6 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
         yield f"[INFO] File {out_file} already exists. Skipping conversion.\n"
     
     if use_imatrix:
-        # Parse additional in-files (comma-separated) into a list.
         in_files_list = [s.strip() for s in imatrix_in_files.split(",") if s.strip()] if imatrix_in_files.strip() else []
         if recompute_imatrix or not os.path.exists(imatrix_file):
             for line in compute_imatrix_file(out_file, calibration_file, imatrix_file,
@@ -507,14 +522,16 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
 
     repo_quant_type = "i1-GGUF" if use_imatrix else "GGUF"
     yield "[INFO] Uploading GGUF quantized model...\n"
-    for line in upload_quant(model_id, base_model_name, repo_quant_type, save_folder, hf_token, username):
-         yield line
+    # Use our retry-based upload helper.
+    upload_logs = upload_quant_retry(model_id, base_model_name, repo_quant_type, save_folder, hf_token, username)
+    for line in upload_logs:
+        yield line
 
 def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username: str):
     try:
         from transformers import AutoTokenizer, AutoConfig, GPTQConfig, AutoModelForCausalLM
     except ImportError:
-        yield "[ERROR] GPU-specific quantization (GPTQ) requires the 'transformers' package. Please use a GPU container or install the dependency.\n"
+        yield "[ERROR] GPTQ quantization requires the 'transformers' package.\n"
         return
 
     yield "=== GPTQ Quantization ===\n"
@@ -567,7 +584,9 @@ def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username:
     model.save_pretrained(save_folder, use_safetensors=True)
     tokenizer.save_pretrained(save_folder)
     yield "[INFO] GPTQ quantization completed.\n"
-    for line in upload_quant(model_id, base_model_name, "GPTQ", save_folder, hf_token, username):
+    # Use retry upload helper.
+    upload_logs = upload_quant_retry(model_id, base_model_name, "GPTQ", save_folder, hf_token, username)
+    for line in upload_logs:
         yield line
 
 def quantize_exllamav2(model_id: str, additional_param: str, hf_token: str, username: str):
@@ -582,7 +601,8 @@ def quantize_exllamav2(model_id: str, additional_param: str, hf_token: str, user
         for line in run_command(cmd):
             yield line
         yield "[INFO] ExLlamaV2 quantization completed.\n"
-        for line in upload_quant(model_id, base_model_name, "exl2", save_folder, hf_token, username, bpw=bpw):
+        upload_logs = upload_quant_retry(model_id, base_model_name, "exl2", save_folder, hf_token, username, bpw=bpw)
+        for line in upload_logs:
             yield line
     except Exception as e:
         yield f"[ERROR] Error during ExLlamaV2 quantization: {e}\n"
@@ -632,7 +652,8 @@ def quantize_awq(model_id: str, additional_param: str, hf_token: str, username: 
         model.save_quantized(save_folder)
         tokenizer.save_pretrained(save_folder)
         yield f"[INFO] AWQ quantization completed. Saved to {save_folder}\n"
-        for line in upload_quant(model_id, base_model_name, "AWQ", save_folder, hf_token, username):
+        upload_logs = upload_quant_retry(model_id, base_model_name, "AWQ", save_folder, hf_token, username)
+        for line in upload_logs:
             yield line
     except Exception as e:
         yield f"[ERROR] Error during AWQ quantization: {e}\n"
@@ -668,7 +689,8 @@ def quantize_hqq(model_id: str, additional_param: str, hf_token: str, username: 
         yield f"[INFO] HQQ quantization completed. Saving to {save_folder}...\n"
         model.save_quantized(save_folder)
         tokenizer.save_pretrained(save_folder)
-        for line in upload_quant(model_id, base_model_name, "HQQ", save_folder, hf_token, username):
+        upload_logs = upload_quant_retry(model_id, base_model_name, "HQQ", save_folder, hf_token, username)
+        for line in upload_logs:
             yield line
     except Exception as e:
         yield f"[ERROR] Error during HQQ quantization: {e}\n"
@@ -693,13 +715,16 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
     # Split the input into a list of model IDs (one per non-empty line)
     model_list = [m.strip() for m in model_ids.splitlines() if m.strip()]
     
+    # Dictionary to store per-model upload status (True if all methods succeeded)
+    model_upload_success = {}
+    
     for model_id in model_list:
+        model_success = True  # assume true; set to False if any method fails upload
         full_log += f"\n=== Processing model: {model_id} ===\n"
         for line in download_model(model_id, hf_token):
             full_log += line
             yield full_log
 
-        # Build a list of selected methods with their parameters.
         selected_methods = []
         if gguf_sel:
             selected_methods.append(("GGUF", gguf_param))
@@ -748,39 +773,56 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
                 full_log += f"[ERROR] Unknown quantization method: {method}\n"
                 yield full_log
 
-        # After processing methods for the current model, handle deletion if requested.
+        # After processing all methods for the current model, perform cleanup only on successful uploads.
         base_model_name = model_id.split("/")[-1]
+        # Determine success for quantized outputs:
+        quant_dir = os.path.join("quantized_models")
+        # Collect folders matching this model
+        model_quant_folders = [os.path.join(quant_dir, folder)
+                               for folder in os.listdir(quant_dir)
+                               if folder.startswith(base_model_name + "-")]
+        all_success = True
+        for folder in model_quant_folders:
+            marker = os.path.join(folder, "upload_success.txt")
+            if not os.path.exists(marker):
+                all_success = False
+                full_log += f"[WARN] Quantized folder '{folder}' did not mark a successful upload. It will not be auto-deleted.\n"
+        model_upload_success[model_id] = all_success
+
+        # Delete original model folder only if all quantized outputs succeeded.
         if delete_original:
             original_path = os.path.join("models", base_model_name)
             if os.path.exists(original_path):
-                try:
-                    shutil.rmtree(original_path)
-                    full_log += f"[INFO] Deleted original model folder: {original_path}\n"
-                except Exception as e:
-                    full_log += f"[ERROR] Could not delete original model folder {original_path}: {e}\n"
+                if all_success:
+                    try:
+                        shutil.rmtree(original_path)
+                        full_log += f"[INFO] Deleted original model folder: {original_path}\n"
+                    except Exception as e:
+                        full_log += f"[ERROR] Could not delete original model folder {original_path}: {e}\n"
+                else:
+                    full_log += f"[INFO] Skipping deletion of original folder {original_path} because not all quantizations uploaded successfully.\n"
         if delete_quantized:
-            quant_dir = os.path.join("quantized_models")
-            if os.path.exists(quant_dir):
-                for folder in os.listdir(quant_dir):
-                    if folder.startswith(base_model_name + "-"):
-                        full_path = os.path.join(quant_dir, folder)
-                        try:
-                            shutil.rmtree(full_path)
-                            full_log += f"[INFO] Deleted quantized model folder: {full_path}\n"
-                        except Exception as e:
-                            full_log += f"[ERROR] Could not delete quantized folder {full_path}: {e}\n"
+            for folder in model_quant_folders:
+                marker = os.path.join(folder, "upload_success.txt")
+                if os.path.exists(marker):
+                    try:
+                        shutil.rmtree(folder)
+                        full_log += f"[INFO] Deleted quantized model folder: {folder}\n"
+                    except Exception as e:
+                        full_log += f"[ERROR] Could not delete quantized folder {folder}: {e}\n"
+                else:
+                    full_log += f"[INFO] Retaining quantized folder {folder} for manual intervention (upload did not succeed).\n"
         yield full_log
 
     full_log += "\n=== Quantization Process Completed ===\n"
     yield full_log
 
 # ---------------------------
-# Build the UI using Gradio (with individual method selection)
+# Build the UI using Gradio
 # ---------------------------
 with gr.Blocks(title="SpongeQuant") as iface:
     gr.Markdown("# SpongeQuant")
     with gr.Row():
-        # Multi-line textbox for multiple model IDs (one per line)
         model_ids_input = gr.Textbox(label="Model IDs (one per line)", 
                                      value="mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated", 
                                      lines=3)
@@ -840,7 +882,6 @@ with gr.Blocks(title="SpongeQuant") as iface:
             hqq_checkbox, hqq_param,
             enable_imatrix_checkbox,
             calibration_file_input, recompute_imatrix_checkbox,
-            # Advanced imatrix parameters:
             imatrix_process_output_checkbox, imatrix_verbosity_input, imatrix_no_ppl_checkbox,
             imatrix_chunk_input, imatrix_output_freq_input, imatrix_save_freq_input,
             imatrix_in_files_input, imatrix_ngl_input,
