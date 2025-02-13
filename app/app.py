@@ -23,14 +23,13 @@ def is_windows_host():
         return False  # Assume Linux if detection fails
     
 # Set the environment variable if running on Windows or WSL (same as --no-mmap).
-# On Windows or WSL (idk), the mmap module seems to have limitations when mapping files larger than 1 GB. This is due to the underlying implementation and the way Python handles large file mappings on Windows systems.
+# On Windows or WSL, the mmap module seems to have limitations when mapping files larger than 1 GB.
 # if is_windows_host():
 #     os.environ['LLAMA_ARG_NO_MMAP'] = '1'
 #     print("[INFO] Windows or WSL detected, setting LLAMA_ARG_NO_MMAP environment variable.")
 
-
 import random
-import sys  # Added to use sys.executable for cross-platform Python calls
+import sys  # For sys.executable cross-platform calls
 
 # Use expandable segments to help reduce fragmentation issues.
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -46,7 +45,7 @@ from huggingface_hub import snapshot_download, HfApi, ModelCard, create_repo
 # ---------------------------
 # Global Default Parameters
 # ---------------------------
-DEFAULT_IMATRIX_FILE = os.path.join("gguf", "imatrix.dat")
+DEFAULT_IMATRIX_FILE = os.path.join("gguf", "imatrix.dat")  # No longer used in the UI.
 DEFAULT_CALIBRATION_FILE = os.path.join("gguf", "calibration_datav3.txt")
 
 DEFAULT_PARAMS = {
@@ -451,7 +450,7 @@ def build_llama_cmd(script_name: str, *args):
 # Quantization Method Implementations
 # ---------------------------
 def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username: str,
-                  use_imatrix: bool, imatrix_file: str, calibration_file: str, recompute_imatrix: bool,
+                  use_imatrix: bool, calibration_file: str, recompute_imatrix: bool,
                   imatrix_process_output: bool, imatrix_verbosity: int, imatrix_no_ppl: bool,
                   imatrix_chunk: int, imatrix_output_frequency: int, imatrix_save_frequency: int,
                   imatrix_in_files: str, imatrix_ngl: int):
@@ -463,12 +462,9 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
     yield f"=== GGUF Quantization for {base_model_name} ===\n"
     yield f"[INFO] Expected output file: {out_file}\n"
     
-    # If imatrix is enabled and the user did not override the default path,
-    # store the imatrix file in the quantized model folder.
+    # Always compute the imatrix file path if imatrix is enabled.
     if use_imatrix:
-        default_imatrix_path = os.path.join("gguf", "imatrix.dat")
-        if not imatrix_file or imatrix_file == default_imatrix_path:
-            imatrix_file = os.path.join(save_folder, f"{base_model_name}.imatrix.dat")
+        imatrix_file = os.path.join(save_folder, f"{base_model_name}.imatrix.dat")
     
     if not os.path.exists(out_file):
         cmd = build_llama_cmd("convert_hf_to_gguf.py", model_dir, "--outtype", "bf16", "--outfile", out_file)
@@ -514,7 +510,6 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
     for line in upload_quant(model_id, base_model_name, repo_quant_type, save_folder, hf_token, username):
          yield line
 
-
 def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username: str):
     try:
         from transformers import AutoTokenizer, AutoConfig, GPTQConfig, AutoModelForCausalLM
@@ -522,7 +517,6 @@ def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username:
         yield "[ERROR] GPU-specific quantization (GPTQ) requires the 'transformers' package. Please use a GPU container or install the dependency.\n"
         return
 
-    # Now continue with the rest of your logic:
     yield "=== GPTQ Quantization ===\n"
     defaults = [4, 128, 0.1]
     if additional_param.strip():
@@ -688,7 +682,7 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
                     exllamav2_sel: bool, exllamav2_param: str,
                     awq_sel: bool, awq_param: str,
                     hqq_sel: bool, hqq_param: str,
-                    enable_imatrix: bool, imatrix_file: str,
+                    enable_imatrix: bool,
                     calibration_file: str,
                     recompute_imatrix: bool,
                     imatrix_process_output: bool, imatrix_verbosity: int, imatrix_no_ppl: bool,
@@ -727,9 +721,8 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
             full_log += f"[INFO] Running {method} quantization...\n"
             yield full_log
             if method == "GGUF":
-                # Pass the additional Imatrix parameters to quantize_gguf
                 for line in quantize_gguf(model_id, gguf_param, hf_token, username,
-                                          enable_imatrix, imatrix_file, calibration_file, recompute_imatrix,
+                                          enable_imatrix, calibration_file, recompute_imatrix,
                                           imatrix_process_output, imatrix_verbosity, imatrix_no_ppl,
                                           imatrix_chunk, imatrix_output_frequency, imatrix_save_frequency,
                                           imatrix_in_files, imatrix_ngl):
@@ -825,7 +818,6 @@ with gr.Blocks(title="SpongeQuant") as iface:
     gr.Markdown("### Imatrix Calibration (GGUF Only)")
     with gr.Row():
         enable_imatrix_checkbox = gr.Checkbox(label="Enable Imatrix", value=True)
-        imatrix_file_input = gr.Textbox(label="Imatrix File Output Path", value=DEFAULT_IMATRIX_FILE)
     with gr.Row():
         calibration_file_input = gr.Textbox(label="Calibration Data File Path", value=DEFAULT_CALIBRATION_FILE)
         recompute_imatrix_checkbox = gr.Checkbox(label="Compute Imatrix", value=True)
@@ -838,23 +830,23 @@ with gr.Blocks(title="SpongeQuant") as iface:
     quant_output = gr.Textbox(label="Output Log", interactive=False, lines=20)
     
     run_button.click(
-    fn=quant_tavern_ui, 
-    inputs=[
-        model_ids_input, hf_token_input, username_input,
-        gguf_checkbox, gguf_param,
-        gptq_checkbox, gptq_param,
-        exllamav2_checkbox, exllamav2_param,
-        awq_checkbox, awq_param,
-        hqq_checkbox, hqq_param,
-        enable_imatrix_checkbox, imatrix_file_input,
-        calibration_file_input, recompute_imatrix_checkbox,
-        # Advanced imatrix parameters:
-        imatrix_process_output_checkbox, imatrix_verbosity_input, imatrix_no_ppl_checkbox,
-        imatrix_chunk_input, imatrix_output_freq_input, imatrix_save_freq_input,
-        imatrix_in_files_input, imatrix_ngl_input,
-        delete_original_checkbox, delete_quantized_checkbox
-    ], 
-    outputs=quant_output
+        fn=quant_tavern_ui, 
+        inputs=[
+            model_ids_input, hf_token_input, username_input,
+            gguf_checkbox, gguf_param,
+            gptq_checkbox, gptq_param,
+            exllamav2_checkbox, exllamav2_param,
+            awq_checkbox, awq_param,
+            hqq_checkbox, hqq_param,
+            enable_imatrix_checkbox,
+            calibration_file_input, recompute_imatrix_checkbox,
+            # Advanced imatrix parameters:
+            imatrix_process_output_checkbox, imatrix_verbosity_input, imatrix_no_ppl_checkbox,
+            imatrix_chunk_input, imatrix_output_freq_input, imatrix_save_freq_input,
+            imatrix_in_files_input, imatrix_ngl_input,
+            delete_original_checkbox, delete_quantized_checkbox
+        ], 
+        outputs=quant_output
     )
 
 if __name__ == "__main__":
