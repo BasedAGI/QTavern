@@ -5,8 +5,6 @@ set -euo pipefail
 if ! command -v docker &> /dev/null; then
     echo "[INFO] Docker is not installed. Installing Docker..."
     curl -fsSL https://get.docker.com | sh
-    sudo sh get-docker.sh
-    rm get-docker.sh
 fi
 
 # Change to the script's directory.
