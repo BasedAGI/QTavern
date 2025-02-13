@@ -4,6 +4,7 @@
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org)
 
 Web UI for quantizing LLMs from Hugging Face. Inspired by [Oobabooga](https://github.com/oobabooga/text-generation-webui) and the [Colab AutoQuant notebook](https://colab.research.google.com/drive/1b6nqC7UZVt8bx4MksX7s656GXPM-eWw4).  
+Only GGUF quantization works for now. Windows is unstable.
 
 ## Quick Start
 
