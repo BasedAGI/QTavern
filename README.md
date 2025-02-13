@@ -34,7 +34,6 @@ Right click on `start_windows.ps1` and press `Run with PowerShell`.
 | **ExLlamaV2**| Limited (Experimental) | Limited               | Yes                    | Yes                    | Optimized for GPU; CPU fallback is possible but performance is suboptimal.                                             |
 | **AWQ**      | Limited                | Poor/Not Recommended   | Yes                    | Yes                    | Relies on CUDA kernels for fast quantization; CPU-only execution is generally impractical.                            |
 | **HQQ**      | Limited                | Limited/Unvalidated   | Yes                    | Yes                    | Designed primarily for GPU inference with specialized kernels; CPU usage is not widely validated and may be very slow. |
-- **GGUF** is the recommended method for CPU-only quantization due to its design for CPU-friendly inference.
 - **GPTQ**, **ExLlamaV2**, **AWQ**, and **HQQ** need a GPU for quantization (and inference). As of now, only GGUF is reliably CPU-friendly, both for quantization and inference.
 
 ### Project Structure
@@ -57,7 +56,6 @@ SpongeQuant/
 ### Contributing
 Contributions are welcome! Please feel free to open issues or submit pull requests on GitHub.
 
-
 ```
 docker run --gpus all -it -p "${PORT}:${PORT}" \
       -v "$(pwd)/app/gguf:/app/gguf" \
@@ -74,4 +72,4 @@ docker run -it -p "${PORT}:${PORT}" \
       --rm "${IMAGE_NAME}"
 ```
 
-x86-64 CPUs have AVX2/FMA support, which can accelerate tensor operations in llama.cpp much faster than ARM NEON/DOTPROD.
+x86-64 CPUs have AVX2/FMA support, which accelerate tensor operations in llama.cpp much faster than ARM NEON/DOTPROD.
