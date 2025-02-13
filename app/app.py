@@ -824,8 +824,8 @@ with gr.Blocks(title="SpongeQuant") as iface:
         recompute_imatrix_checkbox = gr.Checkbox(label="Compute Imatrix", value=True)
     gr.Markdown("### Cleanup Options")
     with gr.Row():
-        delete_original_checkbox = gr.Checkbox(label="Delete Original Model after quantization", value=False)
-        delete_quantized_checkbox = gr.Checkbox(label="Delete Quantization Output after upload", value=False)
+        delete_original_checkbox = gr.Checkbox(label="Delete Original Model after quantization", value=True)
+        delete_quantized_checkbox = gr.Checkbox(label="Delete Quantization Output after upload", value=True)
     with gr.Row():
         run_button = gr.Button("Run Quantization")
     quant_output = gr.Textbox(label="Output Log", interactive=False, lines=20)
