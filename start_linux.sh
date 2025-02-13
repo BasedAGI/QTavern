@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Check if Docker is installed; if not, install it.
+if ! command -v docker &> /dev/null; then
+    echo "[INFO] Docker is not installed. Installing Docker..."
+    curl -fsSL https://get.docker.com | sh
+    sudo sh get-docker.sh
+    rm get-docker.sh
+fi
+
 # Change to the script's directory.
 cd "$(dirname "$0")"
 
