@@ -463,6 +463,13 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
     yield f"=== GGUF Quantization for {base_model_name} ===\n"
     yield f"[INFO] Expected output file: {out_file}\n"
     
+    # If imatrix is enabled and the user did not override the default path,
+    # store the imatrix file in the quantized model folder.
+    if use_imatrix:
+        default_imatrix_path = os.path.join("gguf", "imatrix.dat")
+        if not imatrix_file or imatrix_file == default_imatrix_path:
+            imatrix_file = os.path.join(save_folder, f"{base_model_name}.imatrix.dat")
+    
     if not os.path.exists(out_file):
         cmd = build_llama_cmd("convert_hf_to_gguf.py", model_dir, "--outtype", "bf16", "--outfile", out_file)
         yield f"[INFO] Running conversion command:\n  {cmd}\n"
