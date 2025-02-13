@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org)
 
-Open-source web UI for quantizing LLMs from Hugging Face. Inspired by [Oobabooga](https://github.com/oobabooga/text-generation-webui) and the [Colab AutoQuant notebook](https://colab.research.google.com/drive/1b6nqC7UZVt8bx4MksX7s656GXPM-eWw4).  
+Web UI for quantizing LLMs from Hugging Face. Inspired by [Oobabooga](https://github.com/oobabooga/text-generation-webui) and the [Colab AutoQuant notebook](https://colab.research.google.com/drive/1b6nqC7UZVt8bx4MksX7s656GXPM-eWw4).  
 
 ## Quick Start
 
@@ -15,11 +15,6 @@ Right click on `start_windows.ps1` and press `Run with PowerShell`.
 ```
 
 ### Linux
-#### Install Docker
-```bash
-curl -fsSL https://get.docker.com | sh
-```
-#### Run the script
 ```bash
 ./start_linux.sh
 ```
@@ -32,16 +27,15 @@ curl -fsSL https://get.docker.com | sh
 
 # Quantization Methods Comparison
 
-| Method       | CPU Quantization       | CPU Inference         | GPU Quantization       | GPU Inference          | Tradeoffs / Notes                                                                                           |
-|--------------|------------------------|-----------------------|------------------------|------------------------|-------------------------------------------------------------------------------------------------------------|
-| **GGUF**     | Yes                    | Yes                   | Not Required           | Not Required           | Designed for efficient CPU inference via llama.cpp; optimized for low precision on CPUs.                      |
-| **GPTQ**     | Poor/Not Recommended   | Poor                  | Yes                    | Yes                    | High compression & accuracy but built for CUDA; forcing CPU-only leads to very slow and unreliable processing.|
-| **ExLlamaV2**| Limited (Experimental) | Limited               | Yes                    | Yes                    | Optimized for GPU; CPU fallback is possible but performance is suboptimal.                                  |
-| **AWQ**      | Limited                | Poor/Not Recommended   | Yes                    | Yes                    | Relies on CUDA kernels for fast quantization; CPU-only execution is generally impractical.                    |
+| Method       | CPU Quantization       | CPU Inference         | GPU Quantization       | GPU Inference          | Tradeoffs / Notes                                                                                                      |
+|--------------|------------------------|-----------------------|------------------------|------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **GGUF**     | Yes                    | Yes                   | Not Required           | Not Required           | Designed for efficient CPU inference via llama.cpp; optimized for low precision on CPUs.                               |
+| **GPTQ**     | Poor/Not Recommended   | Poor                  | Yes                    | Yes                    | High compression & accuracy but built for CUDA; forcing CPU-only leads to very slow and unreliable processing.         |
+| **ExLlamaV2**| Limited (Experimental) | Limited               | Yes                    | Yes                    | Optimized for GPU; CPU fallback is possible but performance is suboptimal.                                             |
+| **AWQ**      | Limited                | Poor/Not Recommended   | Yes                    | Yes                    | Relies on CUDA kernels for fast quantization; CPU-only execution is generally impractical.                            |
 | **HQQ**      | Limited                | Limited/Unvalidated   | Yes                    | Yes                    | Designed primarily for GPU inference with specialized kernels; CPU usage is not widely validated and may be very slow. |
 - **GGUF** is the recommended method for CPU-only quantization due to its design for CPU-friendly inference.
-- **GPTQ**, **ExLlamaV2**, **AWQ**, and **HQQ** are optimized for GPU-based quantization. They can sometimes be forced to run on CPU by using dummy CUDA paths or environment variables, but performance and reliability may suffer significantly.
-- Future improvements or updates in these methods might expand their CPU support, but as of now, only GGUF is reliably CPU-friendly.
+- **GPTQ**, **ExLlamaV2**, **AWQ**, and **HQQ** need a GPU for quantization (and inference). As of now, only GGUF is reliably CPU-friendly, both for quantization and inference.
 
 ### Project Structure
 ```
