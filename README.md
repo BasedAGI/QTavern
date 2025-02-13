@@ -29,11 +29,11 @@ Right click on `start_windows.ps1` and press `Run with PowerShell`.
 
 | Method       | CPU Quantization       | CPU Inference         | GPU Quantization       | GPU Inference          | Tradeoffs / Notes                                                                                                      |
 |--------------|------------------------|-----------------------|------------------------|------------------------|------------------------------------------------------------------------------------------------------------------------|
-| **GGUF**     | Yes                    | Yes                   | Not Required           | Not Required           | Designed for efficient CPU inference via llama.cpp; optimized for low precision on CPUs.                               |
-| **GPTQ**     | Poor/Not Recommended   | Poor                  | Yes                    | Yes                    | High compression & accuracy but built for CUDA; forcing CPU-only leads to very slow and unreliable processing.         |
-| **ExLlamaV2**| Limited (Experimental) | Limited               | Yes                    | Yes                    | Optimized for GPU; CPU fallback is possible but performance is suboptimal.                                             |
-| **AWQ**      | Limited                | Poor/Not Recommended   | Yes                    | Yes                    | Relies on CUDA kernels for fast quantization; CPU-only execution is generally impractical.                            |
-| **HQQ**      | Limited                | Limited/Unvalidated   | Yes                    | Yes                    | Designed primarily for GPU inference with specialized kernels; CPU usage is not widely validated and may be very slow. |
+| **GGUF**     | Yes                    | Yes                   | Yes (but not rquired)  | Yes (but not rquired   | Designed for efficient CPU inference via llama.cpp; optimized for low precision on CPUs.                               |
+| **GPTQ**     | No                     | No                    | Yes                    | Yes                    | High compression & accuracy but built for CUDA; forcing CPU-only leads to very slow and unreliable processing.         |
+| **ExLlamaV2**| No                     | No                    | Yes                    | Yes                    | Optimized for GPU; CPU fallback is possible but performance is suboptimal.                                             |
+| **AWQ**      | No                     | No                    | Yes                    | Yes                    | Relies on CUDA kernels for fast quantization; CPU-only execution is generally impractical.                            |
+| **HQQ**      | No                     | No                    | Yes                    | Yes                    | Designed primarily for GPU inference with specialized kernels; CPU usage is not widely validated and may be very slow. |
 - **GPTQ**, **ExLlamaV2**, **AWQ**, and **HQQ** need a GPU for quantization (and inference). As of now, only GGUF is reliably CPU-friendly, both for quantization and inference.
 
 ### Project Structure
