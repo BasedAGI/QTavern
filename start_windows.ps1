@@ -85,14 +85,14 @@ if ($existingContainer) {
 else {
     Write-Host "[INFO] Running a new container named $containerName from image $imageName..."
     if ($gpuOption -ne "") {
-        docker run $gpuOption -it -p 7860:7860 --name $containerName `
+        docker run $gpuOption -it --rm -p 7860:7860 --name $containerName `
             -v "$PWD\app\gguf:/app/gguf" `
             -v "$PWD\models:/app/models" `
             -v "$PWD\quantized_models:/app/quantized_models" `
             $imageName
     }
     else {
-        docker run -it -p 7860:7860 --name $containerName `
+        docker run -it --rm -p 7860:7860 --name $containerName `
             -v "$PWD\app\gguf:/app/gguf" `
             -v "$PWD\models:/app/models" `
             -v "$PWD\quantized_models:/app/quantized_models" `
