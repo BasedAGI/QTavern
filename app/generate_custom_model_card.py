@@ -1,7 +1,7 @@
 import random
 import yaml
 
-import format_quant_type
+from format_quant_type import format_quant_type
 
 def generate_custom_model_card(model_id, base_model_name, quant_method, username, save_folder, license="mit", datasets=None):
     """

@@ -20,7 +20,8 @@ import gradio as gr
 import shutil
 from huggingface_hub import snapshot_download, HfApi, ModelCard, create_repo
 
-import format_quant_type, generate_custom_model_card
+from format_quant_type import format_quant_type
+from generate_custom_model_card import generate_custom_model_card
 
 # ---------------------------
 # Global Default Parameters
