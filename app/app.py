@@ -256,7 +256,7 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
                   use_imatrix: bool, calibration_file: str, recompute_imatrix: bool,
                   imatrix_process_output: bool, imatrix_verbosity: int, imatrix_no_ppl: bool,
                   imatrix_chunk: int, imatrix_output_frequency: int, imatrix_save_frequency: int,
-                  imatrix_in_files: str, imatrix_ngl: int):
+                  imatrix_in_files: str, imatrix_ngl: int, delete_quantized: bool):
     base_model_name = model_id.split("/")[-1].strip()
     model_dir = os.path.join("models", base_model_name)
     save_folder = os.path.join("quantized_models", f"{base_model_name}-GGUF")
@@ -313,7 +313,15 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
     for line in upload_logs:
         yield line
 
-def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username: str):
+    if delete_quantized:
+        if os.path.exists(save_folder):
+            try:
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
+            except Exception as e:
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
+
+def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username: str, delete_quantized: bool):
     try:
         from transformers import AutoTokenizer, AutoConfig, GPTQConfig, AutoModelForCausalLM
     except ImportError:
@@ -375,7 +383,15 @@ def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username:
     for line in upload_logs:
         yield line
 
-def quantize_exllamav2(model_id: str, additional_param: str, hf_token: str, username: str):
+    if delete_quantized:
+        if os.path.exists(save_folder):
+            try:
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
+            except Exception as e:
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
+
+def quantize_exllamav2(model_id: str, additional_param: str, hf_token: str, username: str, delete_quantized: bool):
     try:
         yield "=== ExLlamaV2 Quantization ===\n"
         bpw = float(additional_param) if additional_param.strip() else 4.5
@@ -393,7 +409,15 @@ def quantize_exllamav2(model_id: str, additional_param: str, hf_token: str, user
     except Exception as e:
         yield f"[ERROR] Error during ExLlamaV2 quantization: {e}\n"
 
-def quantize_awq(model_id: str, additional_param: str, hf_token: str, username: str):
+    if delete_quantized:
+        if os.path.exists(save_folder):
+            try:
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
+            except Exception as e:
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
+
+def quantize_awq(model_id: str, additional_param: str, hf_token: str, username: str, delete_quantized: bool):
     try:
         yield "=== AWQ Quantization ===\n"
         defaults = [4, 128, "GEMM", True]
@@ -444,7 +468,15 @@ def quantize_awq(model_id: str, additional_param: str, hf_token: str, username: 
     except Exception as e:
         yield f"[ERROR] Error during AWQ quantization: {e}\n"
 
-def quantize_hqq(model_id: str, additional_param: str, hf_token: str, username: str):
+    if delete_quantized:
+        if os.path.exists(save_folder):
+            try:
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
+            except Exception as e:
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
+
+def quantize_hqq(model_id: str, additional_param: str, hf_token: str, username: str, delete_quantized: bool):
     try:
         yield "=== HQQ Quantization ===\n"
         defaults = [2, 128]
@@ -480,6 +512,14 @@ def quantize_hqq(model_id: str, additional_param: str, hf_token: str, username: 
             yield line
     except Exception as e:
         yield f"[ERROR] Error during HQQ quantization: {e}\n"
+
+    if delete_quantized:
+        if os.path.exists(save_folder):
+            try:
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
+            except Exception as e:
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
 
 # ---------------------------
 # Main Orchestration Function
@@ -536,34 +576,32 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
                                           enable_imatrix, calibration_file, recompute_imatrix,
                                           imatrix_process_output, imatrix_verbosity, imatrix_no_ppl,
                                           imatrix_chunk, imatrix_output_frequency, imatrix_save_frequency,
-                                          imatrix_in_files, imatrix_ngl):
+                                          imatrix_in_files, imatrix_ngl, delete_quantized):
                     full_log += line
                     yield full_log
             elif method == "GPTQ":
-                for line in quantize_gptq(model_id, param, hf_token, username):
+                for line in quantize_gptq(model_id, param, hf_token, username, delete_quantized):
                     full_log += line
                     yield full_log
             elif method == "ExLlamaV2":
-                for line in quantize_exllamav2(model_id, param, hf_token, username):
+                for line in quantize_exllamav2(model_id, param, hf_token, username, delete_quantized):
                     full_log += line
                     yield full_log
             elif method == "AWQ":
-                for line in quantize_awq(model_id, param, hf_token, username):
+                for line in quantize_awq(model_id, param, hf_token, username, delete_quantized):
                     full_log += line
                     yield full_log
             elif method == "HQQ":
-                for line in quantize_hqq(model_id, param, hf_token, username):
+                for line in quantize_hqq(model_id, param, hf_token, username, delete_quantized):
                     full_log += line
                     yield full_log
             else:
                 full_log += f"[ERROR] Unknown quantization method: {method}\n"
                 yield full_log
 
-        # After processing all methods for the current model, perform cleanup only on successful uploads.
+        # After processing all methods for the current model, perform cleanup of the original folder if all quantized outputs succeeded.
         base_model_name = model_id.split("/")[-1]
-        # Determine success for quantized outputs:
         quant_dir = os.path.join("quantized_models")
-        # Collect folders matching this model
         model_quant_folders = [os.path.join(quant_dir, folder)
                                for folder in os.listdir(quant_dir)
                                if folder.startswith(base_model_name + "-")]
@@ -573,9 +611,6 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
             if not os.path.exists(marker):
                 all_success = False
                 full_log += f"[WARN] Quantized folder '{folder}' did not mark a successful upload. It will not be auto-deleted.\n"
-        model_upload_success[model_id] = all_success
-
-        # Delete original model folder only if all quantized outputs succeeded.
         if delete_original:
             original_path = os.path.join("models", base_model_name)
             if os.path.exists(original_path):
@@ -587,7 +622,8 @@ def quant_tavern_ui(model_ids: str, hf_token: str, username: str,
                         full_log += f"[ERROR] Could not delete original model folder {original_path}: {e}\n"
                 else:
                     full_log += f"[INFO] Skipping deletion of original folder {original_path} because not all quantizations uploaded successfully.\n"
-        if delete_quantized:
+        # Final cleanup for quantized outputs is not needed when delete_quantized is True (as deletion occurs sequentially).
+        if not delete_quantized:
             for folder in model_quant_folders:
                 marker = os.path.join(folder, "upload_success.txt")
                 if os.path.exists(marker):
@@ -651,8 +687,16 @@ with gr.Blocks(title="SpongeQuant") as iface:
         recompute_imatrix_checkbox = gr.Checkbox(label="Compute Imatrix", value=True)
     gr.Markdown("### Cleanup Options")
     with gr.Row():
-        delete_original_checkbox = gr.Checkbox(label="Delete Original Model after quantization", value=True)
-        delete_quantized_checkbox = gr.Checkbox(label="Delete Quantization Output after upload", value=True)
+        delete_original_checkbox = gr.Checkbox(
+            label="Delete Original Model after quantization", 
+            value=True,
+            tooltip="If enabled, the original model folder will be deleted after all quantization uploads have completed successfully."
+        )
+        delete_quantized_checkbox = gr.Checkbox(
+            label="Delete Quantization Output after upload", 
+            value=True,
+            tooltip="When enabled, each quantized output is deleted immediately after a successful upload, freeing disk space."
+        )
     with gr.Row():
         run_button = gr.Button("Run Quantization")
     quant_output = gr.Textbox(label="Output Log", interactive=False, lines=20)
