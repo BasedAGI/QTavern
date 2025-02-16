@@ -30,7 +30,7 @@ DEFAULT_IMATRIX_FILE = os.path.join("gguf", "imatrix.dat")  # No longer used in 
 DEFAULT_CALIBRATION_FILE = os.path.join("gguf", "calibration_datav3.txt")
 
 DEFAULT_PARAMS = {
-    "GGUF": "IQ2_XXS, IQ2_XS, IQ2_S, IQ2_M, IQ3_XXS, IQ3_S, IQ3_M, IQ3_XS, IQ4_XS, IQ4_NL, Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_0, Q4_K_S, Q4_K_M, Q5_K_S, Q5_K_M, Q6_K",
+    "GGUF": "IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_XS, IQ3_S, IQ3_M, IQ4_XS, IQ4_NL, Q2_K_S, Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_K_S, Q4_0, Q4_1, Q4_K_M, Q5_K_S, Q5_K_M, Q6_K",
     "GPTQ": "4, 128, 0.1",
     "ExLlamaV2": "4.5",
     "AWQ": "4, 128, GEMM, True",
