@@ -71,7 +71,9 @@ def patch_model_config(model_dir):
 def run_command(command: str):
     """Run a shell command and yield its output line by line."""
     yield f"[DEBUG] Executing command: {command}\n"
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='ISO-8859-1'
+    )
     while True:
         line = process.stdout.readline()
         if line:
@@ -180,8 +182,7 @@ def upload_quant_retry(model_id, base_model_name, quantization_type, save_folder
     If the upload succeeds, create a marker file "upload_success.txt" in the folder.
     Yields log messages.
     """
-    # Repo name should be like base_model_name-i1-GGUF, without the quantization method details like IQ2_XXS
-    repo_id = f"{username}/{base_model_name}-{quantization_type}"  # Adjusted
+    repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
     success = False
     for attempt in range(1, max_retries+1):
         yield f"[INFO] Upload attempt {attempt} for repository {repo_id}\n"
@@ -205,8 +206,8 @@ def upload_quant_retry(model_id, base_model_name, quantization_type, save_folder
                 time.sleep(5)
             else:
                 yield "[ERROR] Maximum upload attempts reached. Upload failed.\n"
+    # Note: The caller should check for the marker file to decide cleanup.
     return
-
 
 def upload_quant(model_id, base_model_name, quantization_type, save_folder, hf_token, username, **kwargs):
     repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
@@ -258,15 +259,15 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
                   imatrix_in_files: str, imatrix_ngl: int, delete_quantized: bool):
     base_model_name = model_id.split("/")[-1].strip()
     model_dir = os.path.join("models", base_model_name)
-
-    # Create a common folder for the converted model and imatrix file
-    common_folder = os.path.join("quantized_models", f"{base_model_name}-GGUF-common")
-    os.makedirs(common_folder, exist_ok=True)
-    out_file = os.path.join(common_folder, f"{base_model_name.lower()}.bf16.gguf")
+    save_folder = os.path.join("quantized_models", f"{base_model_name}-GGUF")
+    os.makedirs(save_folder, exist_ok=True)
+    out_file = os.path.join(save_folder, f"{base_model_name.lower()}.bf16.gguf")
     yield f"=== GGUF Quantization for {base_model_name} ===\n"
-    yield f"[INFO] Expected conversion output file: {out_file}\n"
-
-    # Convert model to BF16 GGUF if necessary.
+    yield f"[INFO] Expected output file: {out_file}\n"
+    
+    if use_imatrix:
+        imatrix_file = os.path.join(save_folder, f"{base_model_name}.imatrix.dat")
+    
     if not os.path.exists(out_file):
         cmd = build_llama_cmd("convert_hf_to_gguf.py", model_dir, "--outtype", "bf16", "--outfile", out_file)
         yield f"[INFO] Running conversion command:\n  {cmd}\n"
@@ -274,12 +275,10 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
             yield line
     else:
         yield f"[INFO] File {out_file} already exists. Skipping conversion.\n"
-
-    # Compute imatrix file once if enabled.
+    
     if use_imatrix:
-        imatrix_file = os.path.join(common_folder, f"{base_model_name}.imatrix.dat")
+        in_files_list = [s.strip() for s in imatrix_in_files.split(",") if s.strip()] if imatrix_in_files.strip() else []
         if recompute_imatrix or not os.path.exists(imatrix_file):
-            in_files_list = [s.strip() for s in imatrix_in_files.split(",") if s.strip()] if imatrix_in_files.strip() else []
             for line in compute_imatrix_file(out_file, calibration_file, imatrix_file,
                                              process_output=imatrix_process_output,
                                              verbosity=imatrix_verbosity,
@@ -290,55 +289,37 @@ def quantize_gguf(model_id: str, additional_param: str, hf_token: str, username:
                                              in_files=in_files_list,
                                              ngl=imatrix_ngl):
                 yield line
-        else:
-            yield f"[INFO] Imatrix file {imatrix_file} already exists. Skipping imatrix computation.\n"
 
-    # Split the additional parameters into individual quantization methods.
     quant_methods = additional_param.replace(" ", "").split(",")
     for method in quant_methods:
         method_str = method.strip().upper()
-        # If imatrix is required for IQ methods, skip if not enabled.
         if method_str.startswith("IQ") and not use_imatrix:
             yield f"[WARN] Skipping {method_str} quantization because imatrix is not enabled.\n"
             continue
-
-        # Create a dedicated subfolder for this quantization method.
-        subfolder = os.path.join("quantized_models", f"{base_model_name}-GGUF-{method_str}")
-        os.makedirs(subfolder, exist_ok=True)
         if use_imatrix:
-            qtype = os.path.join(subfolder, f"{base_model_name.lower()}-i1-{method_str}.gguf")
+            qtype = os.path.join(save_folder, f"{base_model_name.lower()}-i1-{method_str}.gguf")
             cmd = build_llama_cmd("llama-quantize", "--imatrix", imatrix_file, out_file, qtype, method_str)
         else:
-            qtype = os.path.join(subfolder, f"{base_model_name.lower()}-{method_str}.gguf")
+            qtype = os.path.join(save_folder, f"{base_model_name.lower()}-{method_str}.gguf")
             cmd = build_llama_cmd("llama-quantize", out_file, qtype, method_str)
         yield f"[INFO] Quantizing with method '{method_str}':\n  {cmd}\n"
         for line in run_command(cmd):
             yield line
 
-        # Prepare a repository name that now incorporates the quantization method.
-        repo_quant_type = f"{'i1-' if use_imatrix else ''}GGUF-{method_str}"
-        yield f"[INFO] Uploading GGUF quantized model for method {method_str}...\n"
-        upload_logs = upload_quant_retry(model_id, base_model_name, repo_quant_type, subfolder, hf_token, username)
-        for line in upload_logs:
-            yield line
+    repo_quant_type = "i1-GGUF" if use_imatrix else "GGUF"
+    yield "[INFO] Uploading GGUF quantized model...\n"
+    # Use our retry-based upload helper.
+    upload_logs = upload_quant_retry(model_id, base_model_name, repo_quant_type, save_folder, hf_token, username)
+    for line in upload_logs:
+        yield line
 
-        # Delete the quantized output for this method immediately after upload if desired.
-        if delete_quantized:
-            if os.path.exists(subfolder):
-                try:
-                    shutil.rmtree(subfolder)
-                    yield f"[INFO] Deleted quantized model folder {subfolder} after upload.\n"
-                except Exception as e:
-                    yield f"[ERROR] Failed to delete quantized folder {subfolder}: {e}\n"
-
-    # Optionally, remove the common folder (which held the conversion and imatrix files)
     if delete_quantized:
-        if os.path.exists(common_folder):
+        if os.path.exists(save_folder):
             try:
-                shutil.rmtree(common_folder)
-                yield f"[INFO] Deleted common folder {common_folder} after processing all methods.\n"
+                shutil.rmtree(save_folder)
+                yield f"[INFO] Deleted quantized model folder {save_folder} after upload.\n"
             except Exception as e:
-                yield f"[ERROR] Failed to delete common folder {common_folder}: {e}\n"
+                yield f"[ERROR] Failed to delete quantized folder {save_folder}: {e}\n"
 
 def quantize_gptq(model_id: str, additional_param: str, hf_token: str, username: str, delete_quantized: bool):
     try:
