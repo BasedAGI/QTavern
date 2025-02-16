@@ -71,9 +71,7 @@ def patch_model_config(model_dir):
 def run_command(command: str):
     """Run a shell command and yield its output line by line."""
     yield f"[DEBUG] Executing command: {command}\n"
-    process = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='ISO-8859-1'
-    )
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     while True:
         line = process.stdout.readline()
         if line:
