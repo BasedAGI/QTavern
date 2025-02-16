@@ -654,31 +654,31 @@ with gr.Blocks(title="SpongeQuant") as iface:
     with gr.Accordion("Quantization Methods", open=True):
         with gr.Row():
             gguf_checkbox = gr.Checkbox(label="GGUF", value=True,
-                                        tooltip="Enable GGUF quantization (supports optional imatrix calibration).")
+                                        info="Enable GGUF quantization (supports optional imatrix calibration).")
             gguf_param = gr.Textbox(label="GGUF Additional Parameter", value=DEFAULT_PARAMS["GGUF"])
         with gr.Row():
             gptq_checkbox = gr.Checkbox(label="GPTQ", value=False,
-                                        tooltip="Enable GPTQ quantization (requires transformers).")
+                                        info="Enable GPTQ quantization (requires transformers).")
             gptq_param = gr.Textbox(label="GPTQ Additional Parameter", value=DEFAULT_PARAMS["GPTQ"])
         with gr.Row():
             exllamav2_checkbox = gr.Checkbox(label="ExLlamaV2", value=False,
-                                             tooltip="Enable ExLlamaV2 quantization (runs conversion script).")
+                                             info="Enable ExLlamaV2 quantization (runs conversion script).")
             exllamav2_param = gr.Textbox(label="ExLlamaV2 Additional Parameter", value=DEFAULT_PARAMS["ExLlamaV2"])
         with gr.Row():
             awq_checkbox = gr.Checkbox(label="AWQ", value=False,
-                                       tooltip="Enable AWQ quantization (requires AWQ package).")
+                                       info="Enable AWQ quantization (requires AWQ package).")
             awq_param = gr.Textbox(label="AWQ Additional Parameter", value=DEFAULT_PARAMS["AWQ"])
         with gr.Row():
             hqq_checkbox = gr.Checkbox(label="HQQ", value=False,
-                                       tooltip="Enable HQQ quantization (requires HQQ package).")
+                                       info="Enable HQQ quantization (requires HQQ package).")
             hqq_param = gr.Textbox(label="HQQ Additional Parameter", value=DEFAULT_PARAMS["HQQ"])
     gr.Markdown("### Imatrix Advanced Parameters")
     with gr.Row():
         imatrix_process_output_checkbox = gr.Checkbox(label="Process output.weight", value=False,
-                                                      tooltip="If enabled, processes the output weights during imatrix computation.")
+                                                      info="If enabled, processes the output weights during imatrix computation.")
         imatrix_verbosity_input = gr.Number(label="Verbosity", value=1, precision=0)
         imatrix_no_ppl_checkbox = gr.Checkbox(label="Disable PPL", value=False,
-                                              tooltip="If enabled, disables perplexity calculation in imatrix computation.")
+                                              info="If enabled, disables perplexity calculation in imatrix computation.")
     with gr.Row():
         imatrix_chunk_input = gr.Number(label="Chunk size", value=64, precision=0)
         imatrix_output_freq_input = gr.Number(label="Output Frequency", value=10, precision=0)
@@ -689,22 +689,21 @@ with gr.Blocks(title="SpongeQuant") as iface:
     gr.Markdown("### Imatrix Calibration (GGUF Only)")
     with gr.Row():
         enable_imatrix_checkbox = gr.Checkbox(label="Enable Imatrix", value=True,
-                                              tooltip="Enable imatrix computation for GGUF quantization (requires calibration file).")
+                                              info="Enable imatrix computation for GGUF quantization (requires calibration file).")
     with gr.Row():
         calibration_file_input = gr.Textbox(label="Calibration Data File Path", value=DEFAULT_CALIBRATION_FILE)
-        recompute_imatrix_checkbox = gr.Checkbox(label="Compute Imatrix", value=True,
-                                                 tooltip="If enabled, forces computation of the imatrix file even if one exists.")
+        recompute_imatrix_checkbox = gr.Checkbox(label="Compute Imatrix", value=True)
     gr.Markdown("### Cleanup Options")
     with gr.Row():
         delete_original_checkbox = gr.Checkbox(
             label="Delete Original Model after quantization", 
             value=True,
-            tooltip="If enabled, the original model folder will be deleted after all quantization uploads have completed successfully."
+            info="If enabled, the original model folder will be deleted after all quantization uploads have completed successfully."
         )
         delete_quantized_checkbox = gr.Checkbox(
             label="Delete Quantization Output after upload", 
             value=True,
-            tooltip="When enabled, each quantized output is deleted immediately after a successful upload, freeing disk space."
+            info="When enabled, each quantized output is deleted immediately after a successful upload, freeing disk space."
         )
     with gr.Row():
         run_button = gr.Button("Run Quantization")
