@@ -7,7 +7,10 @@ def generate_custom_model_card(model_id, base_model_name, quant_method, username
     """
     Generate a custom model card with a randomly selected image and audio file.
     """
+    # Format the quantization type (e.g., 'i1-GGUF' without specific methods like IQ2_XXS)
     formatted_qtype = format_quant_type(quant_method)
+
+    # Prepare metadata for the model card
     custom_metadata = {
         "quantized_by": "SpongeQuant",
         "base_model": model_id,
@@ -200,6 +203,10 @@ Quantized to `{formatted_qtype}` using [SpongeQuant](https://github.com/SpongeEn
   <figcaption>{selected_audio['caption']}</figcaption>
 </figure>
 """
+    # Convert custom metadata into YAML format
     merged_yaml = yaml.dump(custom_metadata, default_flow_style=False)
+    
+    # Build the full model card by merging metadata and custom content
     full_card = f"---\n{merged_yaml}---\n\n{custom_content}"
+    
     return full_card

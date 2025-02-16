@@ -180,7 +180,8 @@ def upload_quant_retry(model_id, base_model_name, quantization_type, save_folder
     If the upload succeeds, create a marker file "upload_success.txt" in the folder.
     Yields log messages.
     """
-    repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
+    # Repo name should be like base_model_name-i1-GGUF, without the quantization method details like IQ2_XXS
+    repo_id = f"{username}/{base_model_name}-{quantization_type}"  # Adjusted
     success = False
     for attempt in range(1, max_retries+1):
         yield f"[INFO] Upload attempt {attempt} for repository {repo_id}\n"
@@ -204,8 +205,8 @@ def upload_quant_retry(model_id, base_model_name, quantization_type, save_folder
                 time.sleep(5)
             else:
                 yield "[ERROR] Maximum upload attempts reached. Upload failed.\n"
-    # Note: The caller should check for the marker file to decide cleanup.
     return
+
 
 def upload_quant(model_id, base_model_name, quantization_type, save_folder, hf_token, username, **kwargs):
     repo_id = f"{username}/{base_model_name}-{format_quant_type(quantization_type)}"
