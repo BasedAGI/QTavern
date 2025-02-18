@@ -26,7 +26,7 @@ from generate_custom_model_card import generate_custom_model_card
 # ---------------------------
 # Global Default Parameters
 # ---------------------------
-DEFAULT_IMATRIX_FILE = os.path.join("gguf", "imatrix.dat")  # No longer used in the UI.
+DEFAULT_IMATRIX_FILE = os.path.join("gguf", "imatrix.dat")
 DEFAULT_CALIBRATION_FILE = os.path.join("gguf", "calibration_datav3.txt")
 
 DEFAULT_PARAMS = {
