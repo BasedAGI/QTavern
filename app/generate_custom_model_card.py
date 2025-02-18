@@ -202,6 +202,10 @@ Quantized to `{formatted_qtype}` using [SpongeQuant](https://github.com/SpongeEn
   </audio>
   <figcaption>{selected_audio['caption']}</figcaption>
 </figure>
+
+***
+### What is a GGUF?
+GGUF is a type of file format used for running LLMs (large language models) on different types of computers. It works on both regular processors (CPU) and graphics cards (GPU). Some LLMs need powerful and expensive hardware, but GGUF makes it possible to run them on a wider range of computers, even ones without high-end GPUs. To make this possible, GGUF models use a technique called quantization, which reduces their size and memory usage. This helps them run more efficiently, but at lower settings, the model might lose some accuracy or detail in its responses.
 """
     # Convert custom metadata into YAML format
     merged_yaml = yaml.dump(custom_metadata, default_flow_style=False)
