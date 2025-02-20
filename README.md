@@ -6,7 +6,7 @@
 Web UI for quantizing LLMs from Hugging Face. Inspired by [Oobabooga](https://github.com/oobabooga/text-generation-webui) and the [Colab AutoQuant notebook](https://colab.research.google.com/drive/1b6nqC7UZVt8bx4MksX7s656GXPM-eWw4).  
 Only GGUF quantization works for now. Windows is unstable.
 
-![SpongeQuant UI](https://github.com/SpongeEngine/SpongeQuant/blob/main/screenshot.png)
+![SpongeQuant UI](https://github.com/SpongeEngine/SpongeQuant/blob/main/spongequant-ui.png)
 
 ## Quick Start
 
