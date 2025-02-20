@@ -73,8 +73,8 @@ def generate_custom_model_card(model_id, base_model_name, quant_method, username
       {"file": "008.mp3", "caption": "Pixies – Where Is My Mind (USA, 1988)"},
       {"file": "009.mp3", "caption": "M83 – Midnight City (France, 2011)"},
       {"file": "010.mp3", "caption": "NENA – 99 Luftballons (Germany, 1983)"},
-      {"file": "011.mp3", "caption": "El Cascabel – Antonio Maciel and Los Aguilillas with Mariachi México de Pepe Villa / Rafael Carrión (Mexico, Unknown)"},
-      {"file": "012.mp3", "caption": "Chuck Berry – Johnny B. Goode (USA, 1958)"},
+      {"file": "011.mp3", "caption": "Chuck Berry – Johnny B. Goode (USA, 1958)"},
+      {"file": "012.mp3", "caption": "El Cascabel – Antonio Maciel and Los Aguilillas with Mariachi México de Pepe Villa / Rafael Carrión (Mexico, Unknown)"},
     ]
     
     # Randomly select one image and one audio.
