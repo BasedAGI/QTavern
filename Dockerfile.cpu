@@ -58,13 +58,16 @@ RUN python3 -m pip install -r requirements.cpu.txt
 
 # -------------------------------------------------------------------------------
 # Clone and build llama_cpp (for GGUF quantization).
+# This section clones the llama.cpp repository and builds it with performance
+# optimizations enabled.
 # -------------------------------------------------------------------------------
-RUN git clone https://github.com/ggerganov/llama.cpp.git /app/llama_cpp
-WORKDIR /app/llama_cpp
-RUN mkdir build && cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -G Ninja .. && \
-    ninja -j$(nproc)
+    RUN git clone https://github.com/ggerganov/llama.cpp.git /app/llama_cpp
+    WORKDIR /app/llama_cpp
+    RUN mkdir build && cd build && \
+        cmake -DCMAKE_BUILD_TYPE=Release \                \
+              -DCMAKE_CXX_FLAGS="-O3 -march=native -flto" \  \
+              -G Ninja .. && \
+        ninja -j$(nproc)  # Build using all available CPU cores    
 
 # -------------------------------------------------------------------------------
 # Copy the rest of your application files.
